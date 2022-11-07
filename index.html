@@ -2,13 +2,12 @@
 <body>
 <h2>Philadelphia Mail-In / Absentee Ballot Issues 2022</h2>
 
+<input type="text" placeholder="Search by name or voter ID..." id="search" />
+<div>Or click on a precinct or zip code below</div>
+<div id="clear"></div>
+<br/>
+
 <table id="results">
-  <tr>
-    <td style="padding-right: 10px; font-weight: bold;">Voter ID</td>
-    <td style="padding-right: 10px; font-weight: bold;">Name</td>
-    <td style="padding-right: 10px; font-weight: bold;">Birth Year</td>
-    <td style="padding-right: 10px; font-weight: bold;">Reason</td>
-  </tr>
 </table>
 
 <hr />
@@ -3673,29 +3672,62 @@
   const qPrecinct = getQueryVariable('precinct');
   const qZip = getQueryVariable('zip');
   if (qPrecinct || qZip) {
-    const results = qPrecinct
-      ? data.filter(x => x.precinct == qPrecinct)
-      : data.filter(x => x.zip == qZip);
+    const a = document.createElement('a');
+    a.innerHTML = 'clear zip / precinct';
+    a.href = baseUrl;
+    document.getElementById('clear').appendChild(a);
+  }
 
-    const resultsByVoterId = results.reduce((acc, p) => ({
-      ...acc,
-      [p.voterId]: ({
-        ...p,
-        reasons: [
-          ...((acc[p.voterId] || {}).reasons || []),
-          p.reason,
-        ],
-      }),
-    }), {});
+  function populate() {
+    const textSearch = (document.getElementById('search').value || '').toUpperCase();
+    if (qPrecinct || qZip || textSearch != '') {
+      const results = data.filter(x =>
+        (!qPrecinct || x.precinct == qPrecinct) &&
+        (!qZip || x.zip == qZip) &&
+        (textSearch == '' || x.voterId.includes(textSearch) || x.name.toUpperCase().includes(textSearch))
+      );
 
-    console.log(results)
-    console.log(resultsByVoterId)
+      document.getElementById('results').innerHTML = `
+        <tr>
+          <td style="padding-right: 10px; font-weight: bold;">Voter ID</td>
+          <td style="padding-right: 10px; font-weight: bold;">Name</td>
+          <td style="padding-right: 10px; font-weight: bold;">Birth Year</td>
+          <td style="padding-right: 10px; font-weight: bold;">Precinct</td>
+          <td style="padding-right: 10px; font-weight: bold;">Zip Code</td>
+          <td style="padding-right: 10px; font-weight: bold;">Reason</td>
+        </tr>`;
 
-    for (const id of Object.keys(resultsByVoterId)) {
-      const p = resultsByVoterId[id];
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${p.voterId}</td> <td>${p.name}</td> <td>${p.birthYear}</td> <td>${p.reasons.join(', ')}</td>`;
-      document.getElementById('results').appendChild(tr);
+      const resultsByVoterId = results.reduce((acc, p) => ({
+        ...acc,
+        [p.voterId]: ({
+          ...p,
+          reasons: [
+            ...((acc[p.voterId] || {}).reasons || []),
+            p.reason,
+          ],
+        }),
+      }), {});
+
+      for (const id of Object.keys(resultsByVoterId)) {
+        const p = resultsByVoterId[id];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${p.voterId}</td>
+          <td>${p.name}</td>
+          <td>${p.birthYear}</td>
+          <td>${p.precinct}</td>
+          <td>${p.zip}</td>
+          <td>${p.reasons.join(', ')}</td>
+        `;
+        document.getElementById('results').appendChild(tr);
+      }
+    } else {
+      document.getElementById('results').innerHTML = '';
     }
   }
+
+  document.getElementById('search').addEventListener("keyup", () => {
+    populate();
+  });
+  populate();
 </script>
